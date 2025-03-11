@@ -230,3 +230,203 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 ```
+
+## Flutter
+### Lifecycle and initState
+The State object of a StatefulWidget follows a precise lifecycle:
+- **Instantiation**: createState() → State object created → initState().
+- **Mounting**: didChangeDependencies() (if inherited widgets change) → build().
+- **Updates**: didUpdateWidget() (parent config changes) → build().
+- **Unmounting**: deactivate() (temporary removal) → dispose() (permanent).
+
+
+#### initState Under the Hood
+- Timing: Executes post-construction, pre-rendering, with a valid BuildContext.
+- Purpose: A safe entry point for one-time setup, leveraging widget and context.
+- Technical Constraints:
+    - No direct access to render tree metrics (e.g., widget sizes) until after build.
+    - Scheduler binding ensures it runs before the first frame.
+- Advanced Use Cases:
+    - Scheduler Post-Frame: Use WidgetsBinding.instance.addPostFrameCallback for post-build logic:
+```dart
+@override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    print('Widget fully built');
+  });
+}
+```
+```dart
+late double screenWidth;
+@override
+void initState() {
+  super.initState();
+  screenWidth = MediaQuery.of(context).size.width;
+}
+```
+
+## late Keyword
+- Null Safety Context: late is a null safety feature, marking a variable as non-nullable but deferring its initialization.
+- Runtime Behavior: Dart inserts a lazy check—accessing an uninitialized late variable triggers a LateInitializationError.
+- Memory Implications: Minimal overhead; it’s a compile-time promise enforced at runtime.
+
+Advanced Usage
+With Final: late final ensures one-time initialization:
+```dart
+late final String uniqueId;
+@override
+void initState() {
+  super.initState();
+  uniqueId = DateTime.now().toIso8601String(); // Set once
+}
+```
+
+---
+
+## API Data Loading with Debounced Search
+### Deep Design Considerations
+- **Async Patterns**: Future for one-time fetches, Stream for real-time updates.
+- **Debouncing**: Prevents API spam by delaying execution until input stabilizes.
+- **Error Resilience**: Network failures, timeouts, and JSON parsing errors must be handled gracefully.
+
+### Optimal Approach
+- **HTTP Client**: http for lightweight requests (consider dio for complex APIs).
+- **State Handling**: FutureBuilder for simplicity, StreamBuilder for live data.
+- **Debouncing**: Manual Timer or flutter_debouncer for cleaner code.
+- **Caching**: Store results locally to reduce redundant calls (e.g., Hive or SharedPreferences).
+
+```dart
+dependencies:
+  http: ^1.2.0
+```
+
+## Advanced Concepts
+### 1. `didChangeDependencies`
+- When: Runs after initState and when inherited widgets (e.g., Theme, MediaQuery) change.
+- Use: Update state based on external dependencies:
+```dart
+@override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  if (Theme.of(context).brightness == Brightness.dark) {
+    setState(() => _isDarkMode = true);
+  }
+}
+```
+
+### 2. Memory Management
+- Dispose: Cancel timers, close streams, dispose controllers
+```dart
+Timer? _timer;
+@override
+void dispose() {
+  _timer?.cancel();
+  super.dispose();
+}
+```
+
+## Short Unique Examples
+```dart
+class FadeInWidget extends StatefulWidget {
+  @override
+  _FadeInWidgetState createState() => _FadeInWidgetState();
+}
+
+class _FadeInWidgetState extends State<FadeInWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: Duration(seconds: 1))..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: Text('Fading In'),
+    );
+  }
+}
+```
+
+#### 2. late with Custom Getter
+```dart
+class ConfigWidget extends StatefulWidget {
+  @override
+  _ConfigWidgetState createState() => _ConfigWidgetState();
+}
+
+class _ConfigWidgetState extends State<ConfigWidget> {
+  late String _config = _loadConfig();
+
+  String _loadConfig() {
+    return 'Config from ${DateTime.now().second}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(_config);
+  }
+}
+```
+
+#### 3. Debounced API Search
+```dart
+class SearchPage extends StatefulWidget {
+  @override
+  _SearchPageState createState() => _SearchPageState();
+}
+
+class _SearchPageState extends State<SearchPage> {
+  late Future<List<String>> _searchResults;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchResults = _fetchResults('');
+  }
+
+  Future<List<String>> _fetchResults(String query) async {
+    await Future.delayed(Duration(milliseconds: 500)); // Mock delay
+    return ['Result 1 for $query', 'Result 2 for $query'];
+  }
+
+  void _onSearch(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(Duration(milliseconds: 500), () {
+      setState(() => _searchResults = _fetchResults(query));
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(onChanged: _onSearch),
+        FutureBuilder<List<String>>(
+          future: _searchResults,
+          builder: (context, snapshot) => snapshot.hasData
+              ? Column(children: snapshot.data!.map((r) => Text(r)).toList())
+              : CircularProgressIndicator(),
+        ),
+      ],
+    );
+  }
+}
+```
