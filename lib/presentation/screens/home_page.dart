@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_first_app/config/colors.dart';
 import 'package:my_first_app/core/models/contact_model.dart';
+import 'package:my_first_app/presentation/screens/account_page.dart';
 import 'package:my_first_app/presentation/screens/contacts_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -84,17 +85,17 @@ class _HomePageState extends State<HomePage> {
       Center(child: Text('Home Page', style: TextStyle(fontSize: 24))),
       ContactsPage(contacts: contacts, onAddContact: _addContact),
       Center(child: Text('Projects Page', style: TextStyle(fontSize: 24))),
-      Center(child: Text('Account Page', style: TextStyle(fontSize: 24))),
+      AccountPage(),
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Admin Panel'),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: primarySwatch[800],
-        foregroundColor: Colors.white,
-      ),
+      // appBar: AppBar(
+      //   title: Text('Admin Panel'),
+      //   centerTitle: true,
+      //   elevation: 0,
+      //   backgroundColor: primarySwatch[800],
+      //   foregroundColor: Colors.white,
+      // ),
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
